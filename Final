@@ -1,0 +1,338 @@
+//librerias
+#include <stdio.h>
+#include <string.h>
+#include <windows.h>
+// definicion de archivos de texto
+#define DATA "contaminacion.txt"
+#define HISTORICO "datosHistoricos.txt"
+
+// Niveles de la OMS
+#define LIMITE_CO2 400
+#define LIMITE_SO2 20
+#define LIMITE_NO2 40
+#define LIMITE_PM25 25
+
+struct RegistroDia {
+    char nombreZona[30];
+    float co2, so2, no2, pm25;
+};
+
+struct ReporteZona {
+    char nombreZona[50];
+    float promedio_co2, promedio_so2, promedio_no2, promedio_pm25;
+    float prediccion_co2, prediccion_so2, prediccion_no2, prediccion_pm25;
+    int alerta;
+};
+
+// Prototipos
+void caratula();
+void menu();
+void mostrarLimitesOms();
+void ingresoDatos(struct RegistroDia datos[], int *num_dias);
+void calcularPromedios(struct RegistroDia datos[], int num_dias, struct ReporteZona *reporte);
+void mostrarPromedios(struct ReporteZona reporte);
+void prediccionFutura(struct RegistroDia datos[], int num_dias, struct ReporteZona *reporte);
+void verificarLimites(struct ReporteZona *reporte);
+void generacionRecomendacion(struct ReporteZona reporte);
+void guardarEnArchivo(struct ReporteZona reporte);
+void guardarDatosHistoricos(struct RegistroDia dato);
+void mostrarDatosHistoricos();
+void mostrarReportesConsolidados();
+
+int main() {
+    struct RegistroDia datos[30];
+    struct ReporteZona reporte;
+    int num_dias=0;
+    int datosIngresados=0;
+    int opcion;
+    caratula();
+    system("pause");
+    system("cls");
+    
+    do{
+        menu();
+        scanf("%d",&opcion);
+        switch(opcion){
+            case 1:
+                ingresoDatos(datos, &num_dias);
+                datosIngresados = 1;
+                strcpy(reporte.nombreZona, datos[0].nombreZona);
+                system("pause");
+                system("cls");
+                break;
+                
+            case 2:
+                if (!datosIngresados) {
+                    printf("Primero debe ingresar los datos de monitoreo.\n");
+                } else {
+                    prediccionFutura(datos, num_dias, &reporte);
+                }
+                system("pause");
+                system("cls");
+                break;
+
+            case 3:
+                if (!datosIngresados) {
+                    printf("Primero debe ingresar los datos de monitoreo.\n");
+                } else {
+                    verificarLimites(&reporte);
+                }
+                system("pause");
+                system("cls");
+                break;
+
+            case 4:
+                if (!datosIngresados) {
+                    printf("Primero debe ingresar los datos de monitoreo.\n");
+                } else {
+                    calcularPromedios(datos, num_dias, &reporte);
+                    mostrarPromedios(reporte);
+                }
+                system("pause");
+                system("cls");
+                break;
+
+            case 5:
+                if (!datosIngresados) {
+                    printf("Primero debe ingresar los datos de monitoreo.\n");
+                } else {
+                    generacionRecomendacion(reporte);
+                }
+                system("pause");
+                system("cls");
+                break;
+
+            case 6:
+                if (!datosIngresados) {
+                    printf("Primero debe ingresar los datos de monitoreo.\n");
+                } else {
+                    guardarEnArchivo(reporte);
+                }
+                system("pause");
+                system("cls");
+                break;
+
+            case 7:
+                mostrarDatosHistoricos();
+                system("pause");
+                system("cls");
+                break;
+
+            case 8:
+				mostrarReportesConsolidados();
+                system("pause");
+                system("cls");
+                break;
+
+            case 9:
+                printf("Usted salio del programa"\n);
+                system("pause");
+                system("cls");
+                break;
+                    
+            default:
+                printf("Ingrese una opcion valida....!!\n");
+                system("pause");
+                system("cls");
+                break;
+        }
+    }while(opcion !=9);
+
+    return 0;
+}
+
+void menu(){
+    printf("\n**** SISTEMA DE MONITOREO Y PREDICCION DE CONTAMINACION ****\n");
+    printf("1. Monitoreo de contaminacion actual (ingresar y mostrar datos)\n");
+    printf("2. Prediccion de niveles futuros\n");
+    printf("3. Alertas preventivas\n");
+    printf("4. Calculo de promedios historicos\n");
+    printf("5. Generacion de recomendaciones\n");
+    printf("6. Exportar reporte consolidado a archivo\n");
+    printf("7. Ver datos ya ingresados\n");
+    printf("8. Ver reportes consolidados guardados\n");
+    printf("9. Salir\n");
+    printf("Seleccione una opcion: ");
+}
+
+void caratula() {
+    printf("\n\n\n\n\n");
+    printf("\t\t\t\t\tUNIVERSIDAD DE LAS AMERICAS\n");
+    printf("\n\n\n\n\n");
+    printf("\t\t\t\tSistema creado por: Isaac Quishpe, Carlos Quelal\n");
+    printf("\n\n\n\n\n");
+    printf("\t\t\t\t\t\tProgramacion 1\n\n");
+}
+
+void mostrarLimitesOms() {
+    printf("\n**** Limites segun la OMS ****\n");
+    printf("CO2: %d ppm\n", LIMITE_CO2);
+    printf("SO2: %d ug/m3\n", LIMITE_SO2);
+    printf("NO2: %d ug/m3\n", LIMITE_NO2);
+    printf("PM2.5: %d ug/m3\n\n", LIMITE_PM25);
+}
+
+void ingresoDatos(struct RegistroDia datos[], int *num_dias) {
+    mostrarLimitesOms();
+
+    printf("Ingrese el nombre de la zona: ");
+    scanf("%s", datos[0].nombreZona);
+
+    printf("Ingrese los dias a registrar (1-30): ");
+    while (scanf("%d", num_dias) != 1 || *num_dias <= 0 || *num_dias > 30) {
+        printf("Ingrese un dato valido (1-30): ");
+        while (getchar() != '\n');
+    }
+
+    for (int i = 0; i < *num_dias; i++) {
+        printf("\nDia %d:\n", i + 1);
+        printf("CO2 (ppm): \n");
+        scanf("%f", &datos[i].co2);
+        printf("SO2 (ug/m3): \n");
+        scanf("%f", &datos[i].so2);
+        printf("NO2 (ug/m3): \n");
+        scanf("%f", &datos[i].no2);
+        printf("PM2.5 (ug/m3): \n");
+        scanf("%f", &datos[i].pm25);
+        strcpy(datos[i].nombreZona, datos[0].nombreZona);
+        guardarDatosHistoricos(datos[i]);
+    }
+
+    printf("\n[Monitoreo actual] Datos ingresados para %s:\n", datos[0].nombreZona);
+    for (int i = 0; i < *num_dias; i++) {
+        printf("Dia %d - CO2: %.2f ppm \n SO2: %.2f ug/m3 \n NO2: %.2f ug/m3 \n PM2.5: %.2f ug/m3\n",
+               i + 1, datos[i].co2, datos[i].so2, datos[i].no2, datos[i].pm25);
+    }
+}
+
+void calcularPromedios(struct RegistroDia datos[], int num_dias, struct ReporteZona *reporte) {
+    float sum_co2 = 0, sum_so2 = 0, sum_no2 = 0, sum_pm25 = 0;
+    for (int i = 0; i < num_dias; i++) {
+        sum_co2 += datos[i].co2;
+        sum_so2 += datos[i].so2;
+        sum_no2 += datos[i].no2;
+        sum_pm25 += datos[i].pm25;
+    }
+    reporte->promedio_co2 = sum_co2 / num_dias;
+    reporte->promedio_so2 = sum_so2 / num_dias;
+    reporte->promedio_no2 = sum_no2 / num_dias;
+    reporte->promedio_pm25 = sum_pm25 / num_dias;
+}
+
+void mostrarPromedios(struct ReporteZona reporte) {
+    printf("\n[Promedios historicos para %s]\n", reporte.nombreZona);
+    printf("CO2 promedio: %.2f ppm\n", reporte.promedio_co2);
+    printf("SO2 promedio: %.2f ug/m3\n", reporte.promedio_so2);
+    printf("NO2 promedio: %.2f ug/m3\n", reporte.promedio_no2);
+    printf("PM2.5 promedio: %.2f ug/m3\n", reporte.promedio_pm25);
+}
+
+void prediccionFutura(struct RegistroDia datos[], int num_dias, struct ReporteZona *reporte) {
+    float sum_co2 = 0, sum_so2 = 0, sum_no2 = 0, sum_pm25 = 0, peso_total = 0;
+    for (int i = 0; i < num_dias; i++) {
+        float peso = (i + 1) * 0.1;
+        sum_co2 += datos[i].co2 * peso;
+        sum_so2 += datos[i].so2 * peso;
+        sum_no2 += datos[i].no2 * peso;
+        sum_pm25 += datos[i].pm25 * peso;
+        peso_total += peso;
+    }
+    reporte->prediccion_co2 = sum_co2 / peso_total;
+    reporte->prediccion_so2 = sum_so2 / peso_total;
+    reporte->prediccion_no2 = sum_no2 / peso_total;
+    reporte->prediccion_pm25 = sum_pm25 / peso_total;
+
+    printf("\n[Prediccion proxima 24h]\n");
+    printf("CO2: %.2f ppm \n SO2: %.2f ug/m3 \n NO2: %.2f ug/m3 \n PM2.5: %.2f ug/m3\n",
+           reporte->prediccion_co2, reporte->prediccion_so2, reporte->prediccion_no2, reporte->prediccion_pm25);
+}
+
+void verificarLimites(struct ReporteZona *reporte) {
+    reporte->alerta = 0;
+    if (reporte->prediccion_co2 > LIMITE_CO2 || reporte->prediccion_so2 > LIMITE_SO2 ||
+        reporte->prediccion_no2 > LIMITE_NO2 || reporte->prediccion_pm25 > LIMITE_PM25) {
+        reporte->alerta = 1;
+    }
+    printf("\n[Alertas]\n");
+    if (reporte->alerta) {
+        printf("ALERTA: Se preve superacion de limites.\n");
+    } else {
+        printf("No hay alertas, niveles aceptables.\n");
+    }
+}
+
+void generacionRecomendacion(struct ReporteZona reporte) {
+    printf("\n[Recomendaciones]\n");
+    if (reporte.alerta) {
+        printf("- Reducir trafico, regular industrias y usar mascarillas.\n");
+    } else {
+        printf("- Mantener medidas preventivas actuales.\n");
+    }
+}
+
+void guardarEnArchivo(struct ReporteZona reporte) {
+    FILE *archivo = fopen(DATA, "a");
+    if (!archivo) {
+        printf("NO SE PUEDE ABRIR EL ARCHIVO.\n");
+        return;
+    }
+    fprintf(archivo, "=== REPORTE PARA %s ===\n", reporte.nombreZona);
+    fprintf(archivo, "Promedios: CO2 %.2f, SO2 %.2f, NO2 %.2f, PM2.5 %.2f\n",
+            reporte.promedio_co2, reporte.promedio_so2, reporte.promedio_no2, reporte.promedio_pm25);
+    fprintf(archivo, "Prediccion: CO2 %.2f, SO2 %.2f, NO2 %.2f, PM2.5 %.2f\n",
+            reporte.prediccion_co2, reporte.prediccion_so2, reporte.prediccion_no2, reporte.prediccion_pm25);
+    if (reporte.alerta) {
+        fprintf(archivo, "ALERTA: Se preve superacion de limites.\n");
+    } else {
+        fprintf(archivo, "Sin alertas, niveles aceptables.\n");
+    }
+    fprintf(archivo, "-------------------------------------------\n");
+    fclose(archivo);
+    printf("\nReporte exportado correctamente.\n");
+}
+
+void guardarDatosHistoricos(struct RegistroDia dato) {
+    FILE *archivo = fopen(HISTORICO, "a");
+    if (!archivo) {
+        printf("No se pudo abrir archivo historico.\n");
+        return;
+    }
+    fprintf(archivo, "%s %.2f %.2f %.2f %.2f\n",
+            dato.nombreZona, dato.co2, dato.so2, dato.no2, dato.pm25);
+    fclose(archivo);
+}
+
+void mostrarDatosHistoricos() {
+    FILE *archivo = fopen(HISTORICO, "r");
+    if (!archivo) {
+        printf("No hay datos historicos guardados.\n");
+        return;
+    }
+
+    char zona[30];
+    float co2, so2, no2, pm25;
+    int contador = 1;
+
+    printf("\n*** Datos historicos registrados ***\n");
+    while (fscanf(archivo, "%s %f %f %f %f", zona, &co2, &so2, &no2, &pm25) == 5) {
+        printf("%d) Zona: %s \n CO2: %.2f ppm \n SO2: %.2f ug/m3 \n NO2: %.2f ug/m3 \n PM2.5: %.2f ug/m3\n",
+               contador, zona, co2, so2, no2, pm25);
+        contador++;
+    }
+    fclose(archivo);
+}
+
+void mostrarReportesConsolidados() {
+    FILE *archivo = fopen(DATA, "r");
+    if (!archivo) {
+        printf("No hay reportes consolidados guardados.\n");
+        return;
+    }
+
+    char linea[150];
+    printf("\n*** Reportes consolidados guardados ***\n");
+    while (fgets(linea, sizeof(linea), archivo)) {
+        printf("%s", linea);
+    }
+    fclose(archivo);
+}
